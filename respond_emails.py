@@ -3,28 +3,37 @@ import json
 import base64
 import os
 import argparse
+from datetime import datetime
 from dotenv import load_dotenv
 from email.message import EmailMessage
 from google import genai
 
-# 1. Konfiguracja środowiska
+# 1. Environment configuration
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GWS_CREDENTIALS = os.getenv("GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE")
 
-# 2. Obsługa argumentów linii komend
+# 2. Command line arguments handling
 parser = argparse.ArgumentParser(description="AI Email Autoresponder")
-parser.add_argument("--dry-run", action="store_true", help="Pokaż odpowiedzi bez wysyłania")
-parser.add_argument("--limit-style", type=int, default=3, help="Ile wysłanych maili pobrać do nauki stylu (domyślnie: 3)")
-parser.add_argument("--limit-replies", type=int, default=1, help="Na ile nowych maili odpowiedzieć w jednym cyklu (domyślnie: 1)")
+parser.add_argument("--dry-run", action="store_true", help="Show responses without sending")
+parser.add_argument("--limit-style", type=int, default=3, help="How many sent emails to fetch for style learning (default: 3)")
+parser.add_argument("--limit-replies", type=int, default=1, help="How many new emails to reply to in one cycle (default: 1)")
+parser.add_argument("--debug", action="store_true", help="Save detailed logs of incoming emails and generated replies to debug.log")
 args = parser.parse_args()
 
 if not GEMINI_API_KEY:
-    print("BŁĄD: Nie znaleziono GEMINI_API_KEY w pliku .env")
+    print("ERROR: GEMINI_API_KEY not found in .env file")
     exit(1)
 
+def log_debug(message):
+    """Logs debug information to debug.log file."""
+    if args.debug:
+        with open('debug.log', 'a', encoding='utf-8') as f:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"[{timestamp}] {message}\n")
+
 def run_gws(command_args):
-    """Uruchamia narzędzie gws CLI."""
+    """Runs the gws CLI tool."""
     try:
         my_env = os.environ.copy()
         if GWS_CREDENTIALS:
@@ -40,12 +49,12 @@ def run_gws(command_args):
         return json.loads(result.stdout)
     except subprocess.CalledProcessError as e:
         err_output = e.stderr.strip() if e.stderr else e.stdout.strip()
-        print(f"Błąd GWS: {err_output}")
+        print(f"GWS Error: {err_output}")
         return None
 
 def fetch_my_style_emails(limit):
-    """Pobiera skróty wysłanych maili do nauki stylu."""
-    print(f"🔍 Pobieram {limit} wiadomości do nauki stylu...")
+    """Fetches sent email snippets for style learning."""
+    print(f"🔍 Fetching {limit} messages for style learning...")
     list_response = run_gws([
         'gmail', 'users', 'messages', 'list',
         '--params', f'{{"userId": "me", "q": "in:sent", "maxResults": {limit}}}'
@@ -60,25 +69,25 @@ def fetch_my_style_emails(limit):
         if msg_data and 'snippet' in msg_data:
             sent_texts.append(msg_data['snippet'])
     
-    print(f"✅ Pobrano {len(sent_texts)} przykładów stylu.")
+    print(f"✅ Fetched {len(sent_texts)} style examples.")
     return sent_texts
 
 def generate_reply(email_content, style_examples):
-    """Generuje odpowiedź za pomocą Gemini 2.0 Flash."""
+    """Generates a reply using Gemini 2.0 Flash."""
     client = genai.Client(api_key=GEMINI_API_KEY)
-    examples_str = "\n---\n".join(style_examples) if style_examples else "Brak przykładów."
+    examples_str = "\n---\n".join(style_examples) if style_examples else "No examples."
     
     prompt = f"""
-    Jesteś moim asystentem e-mailowym. Napisz odpowiedź na nową wiadomość, naśladując mój styl:
+    You are my email assistant. Write a reply to the new message, mimicking my style:
     
-    MOJE POPRZEDNIE WIADOMOŚCI (Styl):
+    MY PREVIOUS MESSAGES (Style):
     {examples_str}
     
-    ZASADY:
-    1. Jeśli pytanie dotyczy usług, sprawdź informacje na stronie dev.orpi.pl.
-    2. Odpowiedź ma być krótka, konkretna i w moim stylu.
+    RULES:
+    1. If the question is about services, check information on dev.orpi.pl.
+    2. The response should be short, specific, and in my style.
     
-    TREŚĆ NOWEGO MAILA:
+    NEW EMAIL CONTENT:
     {email_content}
     """
     
@@ -86,18 +95,18 @@ def generate_reply(email_content, style_examples):
         response = client.models.generate_content(model='gemini-3.1-flash-lite-preview', contents=prompt)
         return response.text
     except Exception as e:
-        print(f"Błąd Gemini: {e}")
+        print(f"Gemini Error: {e}")
         return None
 
 def process_and_reply():
-    """Główna pętla asystenta."""
+    """Main assistant loop."""
     if args.dry_run:
-        print("\n🚀 [DRY-RUN MODE] Tryb testowy aktywny.\n")
+        print("\n🚀 [DRY-RUN MODE] Test mode active.\n")
 
-    # Pobieramy style z limitem z flagi
+    # Fetch styles with limit from flag
     style_examples = fetch_my_style_emails(args.limit_style)
     
-    print(f"📩 Sprawdzam nowe wiadomości (limit odpowiedzi: {args.limit_replies})...")
+    print(f"📩 Checking new messages (reply limit: {args.limit_replies})...")
     inbox_response = run_gws([
         'gmail', 'users', 'messages', 'list',
         '--params', f'{{"userId": "me", "q": "is:unread in:inbox", "maxResults": {args.limit_replies}}}'
@@ -106,7 +115,7 @@ def process_and_reply():
     messages = inbox_response.get('messages', []) if inbox_response else []
     
     if not messages:
-        print("😴 Brak nowych wiadomości.")
+        print("😴 No new messages.")
         return
 
     for msg in messages:
@@ -116,42 +125,67 @@ def process_and_reply():
         if not message_data: continue
 
         headers = message_data.get('payload', {}).get('headers', [])
-        sender = next((h['value'] for h in headers if h['name'] == 'From'), "Nieznany")
-        subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "Wiadomość")
+        sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
+        subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "Message")
         
-        print(f"🤖 Analizuję maila od: {sender}")
-        reply_text = generate_reply(message_data.get('snippet', ''), style_examples)
+        print(f"🤖 Analyzing email from: {sender}")
+        
+        email_snippet = message_data.get('snippet', '')
+        log_debug(f"\n{'='*60}")
+        log_debug(f"INCOMING EMAIL")
+        log_debug(f"From: {sender}")
+        log_debug(f"Subject: {subject}")
+        log_debug(f"Content: {email_snippet}")
+        log_debug(f"{'='*60}")
+        
+        reply_text = generate_reply(email_snippet, style_examples)
         
         if not reply_text: continue
 
-        print(f"📝 Wygenerowana odpowiedź dla {sender}:")
+        print(f"📝 Generated reply for {sender}:")
         print("-" * 30)
         print(reply_text)
         print("-" * 30)
+        
+        log_debug(f"\nGENERATED REPLY")
+        log_debug(f"To: {sender}")
+        log_debug(f"Reply: {reply_text}")
+        log_debug(f"{'='*60}\n")
 
         if args.dry_run:
-            print(f"⏩ [DRY-RUN] Pominięto wysyłkę do {sender}.\n")
+            print(f"⏩ [DRY-RUN] Skipped sending to {sender}.\n")
             continue
 
-        # Przygotowanie i wysyłka
+        # Prepare and send
         reply_email = EmailMessage()
         reply_email.set_content(reply_text)
         reply_email['To'] = sender
         reply_email['Subject'] = subject if subject.startswith("Re:") else f"Re: {subject}"
         raw_msg = base64.urlsafe_b64encode(reply_email.as_bytes()).decode('utf-8')
 
-        run_gws([
+        send_result = run_gws([
             'gmail', 'users', 'messages', 'send',
             '--params', '{"userId": "me"}',
             '--json', json.dumps({'raw': raw_msg, 'threadId': message_data['threadId']})
         ])
 
-        run_gws([
+        if not send_result:
+            print(f"❌ Failed to send reply to {sender}. Skipping.\n")
+            log_debug(f"ERROR: Failed to send email to {sender}")
+            continue
+
+        modify_result = run_gws([
             'gmail', 'users', 'messages', 'modify',
             '--params', f'{{"userId": "me", "id": "{msg_id}"}}',
             '--json', '{"removeLabelIds": ["UNREAD"]}'
         ])
-        print(f"✅ Odpowiedź wysłana do {sender}.\n")
+        
+        if modify_result:
+            print(f"✅ Reply sent to {sender}.\n")
+            log_debug(f"SUCCESS: Email sent and marked as read for {sender}")
+        else:
+            print(f"⚠️  Reply sent to {sender}, but failed to mark as read.\n")
+            log_debug(f"WARNING: Email sent to {sender} but failed to mark as read")
 
 if __name__ == '__main__':
     process_and_reply()

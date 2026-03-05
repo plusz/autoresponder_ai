@@ -57,6 +57,7 @@ The script supports the following flags:
 | `--dry-run` | Shows responses in console without sending. | False |
 | `--limit-style` | Number of emails fetched for style learning. | 3 |
 | `--limit-replies` | Maximum number of replies in one cycle. | 1 |
+| `--debug` | Saves detailed logs to `debug.log` (incoming emails and replies). | False |
 
 ### Example Commands
 
@@ -68,6 +69,11 @@ python respond_emails.py --dry-run --limit-style 5
 **Production run:**
 ```bash
 python respond_emails.py --limit-replies 3
+```
+
+**Debug mode (logs all email details):**
+```bash
+python respond_emails.py --debug --dry-run
 ```
 
 ## 🧠 How It Works
@@ -84,6 +90,7 @@ Add the following files to `.gitignore`:
 .env
 credentials.json
 venv/
+debug.log
 ```
 
 ## 📄 License
