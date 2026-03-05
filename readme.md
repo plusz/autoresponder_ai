@@ -54,26 +54,59 @@ The script supports the following flags:
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--dry-run` | Shows responses in console without sending. | False |
-| `--limit-style` | Number of emails fetched for style learning. | 3 |
-| `--limit-replies` | Maximum number of replies in one cycle. | 1 |
-| `--debug` | Saves detailed logs to `debug.log` (incoming emails and replies). | False |
+| `--dry-run` | Shows responses in console without sending. Perfect for testing. | `False` |
+| `--limit-style` | Number of sent emails to fetch for style learning. | `3` |
+| `--limit-replies` | Maximum number of replies to send in one cycle. | `1` |
+| `--debug` | Saves detailed logs to `debug.log` (incoming emails and generated replies). | `False` |
+
+### Flag Details
+
+#### `--dry-run`
+Test mode that generates replies but doesn't send them. Use this to:
+- Verify the AI is generating appropriate responses
+- Test your style learning configuration
+- Preview responses before going live
+
+#### `--limit-style`
+Controls how many of your sent emails are analyzed to learn your writing style. Higher values provide better style mimicking but take longer to process.
+- **Recommended**: 5-10 for best results
+- **Minimum**: 3 for basic style learning
+
+#### `--limit-replies`
+Limits how many emails the script will respond to in a single run. Useful for:
+- Rate limit management (Gmail API has quotas)
+- Gradual rollout of automation
+- Testing with small batches
+
+#### `--debug`
+Enables detailed logging to `debug.log` file with timestamps. Logs include:
+- Full content of incoming emails (sender, subject, body)
+- Generated AI responses
+- Success/failure status of each operation
+- API errors and warnings
+
+**⚠️ Important**: Debug logs may contain sensitive information. Never commit `debug.log` to version control.
 
 ### Example Commands
 
-**Safe test:**
+**Safe test (recommended first run):**
 ```bash
 python respond_emails.py --dry-run --limit-style 5
 ```
 
-**Production run:**
+**Production run with limited replies:**
 ```bash
 python respond_emails.py --limit-replies 3
 ```
 
-**Debug mode (logs all email details):**
+**Debug mode for troubleshooting:**
 ```bash
 python respond_emails.py --debug --dry-run
+```
+
+**Full production with logging:**
+```bash
+python respond_emails.py --debug --limit-style 10 --limit-replies 5
 ```
 
 ## 🧠 How It Works
