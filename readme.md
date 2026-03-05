@@ -1,37 +1,37 @@
 # 🤖 AI Gmail Autoresponder (Gemini + GWS CLI)
 
-Automatyczny asystent e-mailowy, który analizuje Twój styl komunikacji na podstawie wysłanych wiadomości i odpowiada na nowe maile, korzystając z bazy wiedzy na stronie `dev.orpi.pl`.
+An automated email assistant that analyzes your communication style based on sent messages and responds to new emails using the knowledge base from `dev.orpi.pl`.
 
-## 🌟 Funkcje
+## 🌟 Features
 
-- **Naśladowanie Stylu**: Analizuje Twoje wysłane wiadomości, aby zachować Twój ton i strukturę maila.
-- **Baza Wiedzy**: Wykorzystuje stronę `dev.orpi.pl` jako źródło informacji przy odpowiedziach.
-- **Tryb Dry-Run**: Pozwala testować odpowiedzi w konsoli bez ich wysyłania.
-- **Parametryzacja**: Możliwość określenia liczby maili do nauki stylu oraz liczby odpowiedzi.
+- **Style Mimicking**: Analyzes your sent messages to preserve your tone and email structure.
+- **Knowledge Base**: Uses the `dev.orpi.pl` website as a source of information for responses.
+- **Dry-Run Mode**: Allows testing responses in the console without sending them.
+- **Parameterization**: Ability to specify the number of emails for style learning and the number of replies.
 
-## 🛠️ Wymagania
+## 🛠️ Requirements
 
 - **Python 3.11+**
-- **Google Workspace CLI (gws)**: Zainstalowane globalnie (`npm install -g @googleworkspace/cli`).
-- **Google Cloud CLI (gcloud)**: Do autoryzacji.
-- **Gemini API Key**: Z Google AI Studio.
+- **Google Workspace CLI (gws)**: Installed globally (`npm install -g @googleworkspace/cli`).
+- **Google Cloud CLI (gcloud)**: For authorization.
+- **Gemini API Key**: From Google AI Studio.
 
-## 🚀 Instalacja i Konfiguracja
+## 🚀 Installation and Configuration
 
-### 1. Autoryzacja Gmail
+### 1. Gmail Authorization
 
 ```bash
 gcloud auth login
 gws auth setup --scopes "https://www.googleapis.com/auth/gmail.modify"
 ```
 
-### 2. Eksport kluczy (Wymagane na macOS)
+### 2. Export Credentials (Required on macOS)
 
 ```bash
 gws auth export --unmasked > credentials.json
 ```
 
-### 3. Środowisko Python
+### 3. Python Environment
 
 ```bash
 python3 -m venv venv
@@ -39,46 +39,46 @@ source venv/bin/activate
 pip install google-genai python-dotenv
 ```
 
-### 4. Plik .env
+### 4. .env File
 
-Utwórz plik `.env` i dodaj:
+Create a `.env` file and add:
 
 ```env
-GEMINI_API_KEY=twoj_klucz_api
+GEMINI_API_KEY=your_api_key
 GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=credentials.json
 ```
 
-## 🎮 Sposób użycia
+## 🎮 Usage
 
-Skrypt obsługuje następujące flagi:
+The script supports the following flags:
 
-| Flaga | Opis | Domyślnie |
-|-------|------|-----------|
-| `--dry-run` | Pokazuje odpowiedzi w konsoli bez wysyłania. | False |
-| `--limit-style` | Liczba maili pobieranych do nauki stylu. | 3 |
-| `--limit-replies` | Maksymalna liczba odpowiedzi w jednym cyklu. | 1 |
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--dry-run` | Shows responses in console without sending. | False |
+| `--limit-style` | Number of emails fetched for style learning. | 3 |
+| `--limit-replies` | Maximum number of replies in one cycle. | 1 |
 
-### Przykłady komend
+### Example Commands
 
-**Bezpieczny test:**
+**Safe test:**
 ```bash
 python respond_emails.py --dry-run --limit-style 5
 ```
 
-**Uruchomienie produkcyjne:**
+**Production run:**
 ```bash
 python respond_emails.py --limit-replies 3
 ```
 
-## 🧠 Mechanizm działania
+## 🧠 How It Works
 
-1. **Analiza Stylu**: Pobiera n wysłanych wiadomości przez gws.
-2. **Generowanie**: Gemini 2.0 Flash tworzy odpowiedź łącząc styl z faktami z dev.orpi.pl.
-3. **Wysyłka**: Skrypt wysyła odpowiedź w tym samym wątku i oznacza maila jako przeczytany.
+1. **Style Analysis**: Fetches n sent messages via gws.
+2. **Generation**: Gemini 2.0 Flash creates a response combining style with facts from dev.orpi.pl.
+3. **Sending**: The script sends the response in the same thread and marks the email as read.
 
-## 🔒 Bezpieczeństwo
+## 🔒 Security
 
-Dodaj poniższe pliki do `.gitignore`:
+Add the following files to `.gitignore`:
 
 ```
 .env
@@ -86,6 +86,6 @@ credentials.json
 venv/
 ```
 
-## 📄 Licencja
+## 📄 License
 
-Projekt udostępniony na licencji MIT.
+Project released under the MIT License.
