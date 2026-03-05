@@ -48,6 +48,25 @@ GEMINI_API_KEY=your_api_key
 GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=credentials.json
 ```
 
+### 5. Optional: Sender Whitelist
+
+To restrict responses to specific email addresses, create a `config.json` file:
+
+```json
+{
+  "allowed_senders": [
+    "colleague@company.com",
+    "client@example.com"
+  ]
+}
+```
+
+- **Empty list or no file**: Responds to all emails
+- **With addresses**: Only responds to emails from listed senders
+- **Partial matching**: `"@company.com"` matches any email from that domain
+
+See `config.json.example` for a template.
+
 ## 🎮 Usage
 
 The script supports the following flags:
@@ -58,6 +77,7 @@ The script supports the following flags:
 | `--limit-style` | Number of sent emails to fetch for style learning. | `3` |
 | `--limit-replies` | Maximum number of replies to send in one cycle. | `1` |
 | `--debug` | Saves detailed logs to `debug.log` (incoming emails and generated replies). | `False` |
+| `--config` | Path to JSON config file with allowed senders list. | `config.json` |
 
 ### Flag Details
 
@@ -87,6 +107,23 @@ Enables detailed logging to `debug.log` file with timestamps. Logs include:
 
 **⚠️ Important**: Debug logs may contain sensitive information. Never commit `debug.log` to version control.
 
+#### `--config`
+Specifies the path to a JSON configuration file containing an allowed senders whitelist.
+- If the file doesn't exist, the script responds to all emails
+- If `allowed_senders` is empty `[]`, responds to all emails
+- If `allowed_senders` contains addresses, only those senders receive replies
+- Supports partial matching (e.g., `"@company.com"` matches all company emails)
+
+**Example config.json:**
+```json
+{
+  "allowed_senders": [
+    "boss@company.com",
+    "@importantclient.com"
+  ]
+}
+```
+
 ### Example Commands
 
 **Safe test (recommended first run):**
@@ -107,6 +144,16 @@ python respond_emails.py --debug --dry-run
 **Full production with logging:**
 ```bash
 python respond_emails.py --debug --limit-style 10 --limit-replies 5
+```
+
+**With sender whitelist:**
+```bash
+python respond_emails.py --config config.json --limit-replies 10
+```
+
+**Custom config file location:**
+```bash
+python respond_emails.py --config /path/to/my-config.json
 ```
 
 ## 🧠 How It Works
@@ -139,7 +186,10 @@ Add the following files to `.gitignore`:
 credentials.json
 venv/
 debug.log
+config.json
 ```
+
+**Note**: `config.json.example` is provided as a template and can be committed to version control.
 
 ## 📄 License
 

@@ -19,11 +19,54 @@ parser.add_argument("--dry-run", action="store_true", help="Show responses witho
 parser.add_argument("--limit-style", type=int, default=3, help="How many sent emails to fetch for style learning (default: 3)")
 parser.add_argument("--limit-replies", type=int, default=1, help="How many new emails to reply to in one cycle (default: 1)")
 parser.add_argument("--debug", action="store_true", help="Save detailed logs of incoming emails and generated replies to debug.log")
+parser.add_argument("--config", type=str, default="config.json", help="Path to config file with allowed senders (default: config.json)")
 args = parser.parse_args()
 
 if not GEMINI_API_KEY:
     print("ERROR: GEMINI_API_KEY not found in .env file")
     exit(1)
+
+# 3. Load optional config file
+def load_config():
+    """Loads optional config.json file with allowed senders list."""
+    if os.path.exists(args.config):
+        try:
+            with open(args.config, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                allowed = config.get('allowed_senders', [])
+                if allowed:
+                    print(f"📋 Loaded {len(allowed)} allowed sender(s) from {args.config}")
+                    log_debug(f"Allowed senders: {allowed}")
+                else:
+                    print(f"📋 Config loaded: responding to all senders (empty list)")
+                return allowed
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Warning: Invalid JSON in {args.config}: {e}")
+            print("   Continuing with no sender restrictions.")
+            return []
+        except Exception as e:
+            print(f"⚠️  Warning: Could not read {args.config}: {e}")
+            print("   Continuing with no sender restrictions.")
+            return []
+    else:
+        print(f"📋 No config file found. Responding to all senders.")
+        return []
+
+def is_sender_allowed(sender_email, allowed_senders):
+    """Check if sender is in the allowed list. Empty list = allow all."""
+    if not allowed_senders:
+        return True
+    
+    # Extract email from "Name <email@domain.com>" format
+    import re
+    email_match = re.search(r'<(.+?)>', sender_email)
+    if email_match:
+        sender_email = email_match.group(1)
+    
+    sender_email = sender_email.strip().lower()
+    return any(allowed.lower() in sender_email for allowed in allowed_senders)
+
+ALLOWED_SENDERS = load_config()
 
 def log_debug(message):
     """Logs debug information to debug.log file."""
@@ -127,6 +170,12 @@ def process_and_reply():
         headers = message_data.get('payload', {}).get('headers', [])
         sender = next((h['value'] for h in headers if h['name'] == 'From'), "Unknown")
         subject = next((h['value'] for h in headers if h['name'] == 'Subject'), "Message")
+        
+        # Check if sender is allowed
+        if not is_sender_allowed(sender, ALLOWED_SENDERS):
+            print(f"⏭️  Skipping email from {sender} (not in allowed senders list)")
+            log_debug(f"SKIPPED: {sender} not in allowed senders list")
+            continue
         
         print(f"🤖 Analyzing email from: {sender}")
         

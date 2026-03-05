@@ -1,0 +1,6 @@
+{
+  "allowed_senders": [
+    "example@domain.com",
+    "another@example.com"
+  ]
+}
