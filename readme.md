@@ -113,7 +113,22 @@ python respond_emails.py --debug --limit-style 10 --limit-replies 5
 
 1. **Style Analysis**: Fetches n sent messages via gws.
 2. **Generation**: Gemini 2.0 Flash creates a response combining style with facts from dev.orpi.pl.
-3. **Sending**: The script sends the response in the same thread and marks the email as read.
+3. **Validation**: Verifies the email was successfully sent before marking as read.
+4. **Sending**: The script sends the response in the same thread and marks the email as read.
+
+### Error Handling
+
+The script includes robust error handling:
+
+- **API Failures**: If Gmail API returns an error (e.g., rate limits, network issues), the email will **not** be sent
+- **Send Verification**: Each email send operation is validated before marking the email as read
+- **Graceful Degradation**: If marking as read fails, the script logs a warning but confirms the email was sent
+- **Debug Logging**: All errors are logged to `debug.log` when `--debug` flag is enabled
+
+**Example error scenarios:**
+- Rate limit exceeded → Email not sent, error displayed
+- Network timeout → Email not sent, error displayed  
+- Send success but mark-as-read fails → Email sent, warning displayed
 
 ## 🔒 Security
 
